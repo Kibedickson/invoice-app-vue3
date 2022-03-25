@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "core-js": "^3.6.5",
+    "firebase": "^9.6.10",
     "uid": "^2.0.0",
     "vue": "^3.2.31",
     "vue-router": "^4.0.12",
@@ -15,6 +16,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^2.2.2",
+    "sass": "^1.49.9",
     "vite": "^2.8.4"
   }
 }
