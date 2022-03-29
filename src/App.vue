@@ -3,11 +3,16 @@ import {RouterLink, RouterView} from 'vue-router'
 import Navigation from './components/Navigation.vue'
 import {computed, ref} from "vue";
 import InvoiceModal from './components/InvoiceModal.vue'
-import { useStore } from 'vuex'
+import Modal from './components/Modal.vue'
+import {useStore} from 'vuex'
 
 const store = useStore()
+
 const mobile = ref(null)
+
 const invoiceModal = computed(() => store.state.invoiceModal)
+const modalActive = computed(() => store.state.modalActive)
+const invoicesLoaded = computed(() => store.state.invoicesLoaded)
 
 const checkScreen = () => {
   const windowWidth = window.innerWidth
@@ -22,15 +27,18 @@ const checkScreen = () => {
 checkScreen()
 window.addEventListener("resize", checkScreen)
 
+store.dispatch('GET_INVOICES')
+
 </script>
 
 <template>
-  <div>
+  <div v-if="invoicesLoaded">
     <div v-if="! mobile" class="app flex flex-column">
       <Navigation/>
       <div class="app-content flex flex-column">
+        <Modal v-if="modalActive"/>
         <transition name="invoice">
-          <InvoiceModal v-if="invoiceModal" />
+          <InvoiceModal v-if="invoiceModal"/>
         </transition>
         <RouterView/>
       </div>

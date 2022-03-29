@@ -1,15 +1,40 @@
 <script setup>
-import {ref} from "vue";
+import {computed, ref} from "vue";
 import { useStore } from 'vuex'
+import Invoice from '../components/Invoice.vue'
 
 const store = useStore()
 
 const filteredInvoice = ref(null)
 const filterMenu = ref(null)
-const invoiceData = ref([])
+const invoiceData = computed(() => store.state.invoiceData)
+const filteredData = computed(() => {
+  return invoiceData.value.filter((invoice) => {
+    if (filteredInvoice.value === "Draft") {
+      return invoice.invoiceDraft === true;
+    }
+    if (filteredInvoice.value === "Pending") {
+      return invoice.invoicePending === true;
+    }
+    if (filteredInvoice.value === "Paid") {
+      return invoice.invoicePaid === true;
+    }
+    return invoice;
+  });
+})
 
-const toggleFilterMenu = () => {}
-const filteredInvoices = () => {}
+const toggleFilterMenu = () => {
+  filterMenu.value = ! filterMenu.value
+}
+
+const filteredInvoices = (e) => {
+  if (e.target.innerText === "Clear Filter") {
+    filteredInvoice.value = null;
+    return;
+  }
+  filteredInvoice.value = e.target.innerText;
+}
+
 const newInvoice = () => {store.commit('TOGGLE_INVOICE')}
 </script>
 
@@ -19,7 +44,7 @@ const newInvoice = () => {store.commit('TOGGLE_INVOICE')}
     <div class="header flex">
       <div class="left flex flex-column">
         <h1>Invoices</h1>
-        <span>There are 10 total invoices</span>
+        <span>There are {{ invoiceData.length }} total invoices</span>
       </div>
       <div class="right flex">
         <div @click="toggleFilterMenu" class="filter flex">
@@ -43,7 +68,7 @@ const newInvoice = () => {store.commit('TOGGLE_INVOICE')}
 
     <!-- Invoices -->
     <div v-if="invoiceData.length > 0">
-<!--      <Invoice v-for="(invoice, index) in filteredData" :invoice="invoice" :key="index" />-->
+      <Invoice v-for="(invoice, index) in filteredData" :invoice="invoice" :key="index" />
     </div>
     <div v-else class="empty flex flex-column">
       <img src="../assets/illustration-empty.svg" alt="" />

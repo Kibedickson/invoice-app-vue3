@@ -1,9 +1,14 @@
 <script setup>
-import {ref, watch} from "vue";
+import {computed, ref, watch} from "vue";
 import {useStore} from 'vuex'
-import { uid } from 'uid'
+import {uid} from 'uid'
+import db from "../firebase/firebaseInit"
+import Loading from "./Loading.vue";
+import {useRoute} from "vue-router";
 
 const store = useStore()
+const route = useRoute()
+
 
 const dateOptions = ref({year: "numeric", month: "short", day: "numeric"})
 const docId = ref(null)
@@ -29,18 +34,148 @@ const invoiceDraft = ref(null)
 const invoiceItemList = ref([])
 const invoiceTotal = ref(0)
 
+const invoiceWrap = ref(null)
+
+const editInvoice = computed(() => store.state.editInvoice)
+const currentInvoiceArray = computed(() => store.state.currentInvoiceArray)
+
 //get current date for invoice date field
-invoiceDate.value = new Date(invoiceDateUnix.value).toLocaleDateString("en-us", dateOptions.value)
+if (!editInvoice) {
+  invoiceDate.value = new Date(invoiceDateUnix.value).toLocaleDateString("en-us", dateOptions.value)
+}
 
-const editInvoice = ref(null)
+if (editInvoice){
+  const currentInvoice = currentInvoiceArray.value[0];
+  docId.value = currentInvoice.docId;
+  billerStreetAddress.value = currentInvoice.billerStreetAddress;
+  billerCity.value = currentInvoice.billerCity;
+  billerZipCode.value = currentInvoice.billerZipCode;
+  billerCountry.value = currentInvoice.billerCountry;
+  clientName.value = currentInvoice.clientName;
+  clientEmail.value = currentInvoice.clientEmail;
+  clientStreetAddress.value = currentInvoice.clientStreetAddress;
+  clientCity.value = currentInvoice.clientCity;
+  clientZipCode.value = currentInvoice.clientZipCode;
+  clientCountry.value = currentInvoice.clientCountry;
+  invoiceDateUnix.value = currentInvoice.invoiceDateUnix;
+  invoiceDate.value = currentInvoice.invoiceDate;
+  paymentTerms.value = currentInvoice.paymentTerms;
+  paymentDueDateUnix.value = currentInvoice.paymentDueDateUnix;
+  paymentDueDate.value = currentInvoice.paymentDueDate;
+  productDescription.value = currentInvoice.productDescription;
+  invoicePending.value = currentInvoice.invoicePending;
+  invoiceDraft.value = currentInvoice.invoiceDraft;
+  invoiceItemList.value = currentInvoice.invoiceItemList;
+  invoiceTotal.value = currentInvoice.invoiceTotal;
+}
 
-const checkClick = () => {
+const checkClick = (e) => {
+  if (e.target === invoiceWrap.value) {
+    store.commit('TOGGLE_MODAL')
+  }
 }
 const submitForm = () => {
+  if (editInvoice.value){
+    updateInvoice()
+    return
+  }
+  uploadInvoice()
 }
+
+const updateInvoice = async () => {
+  if (invoiceItemList.value.length <= 0) {
+    alert("Please ensure you filled out work items!");
+    return;
+  }
+  loading.value = true
+
+  calInvoiceTotal()
+
+  const database = db.collection("invoices").doc(docId.value)
+
+  await database.update({
+    billerStreetAddress: billerStreetAddress.value,
+    billerCity: billerCity.value,
+    billerZipCode: billerZipCode.value,
+    billerCountry: billerCountry.value,
+    clientName: clientName.value,
+    clientEmail: clientEmail.value,
+    clientStreetAddress: clientStreetAddress.value,
+    clientCity: clientCity.value,
+    clientZipCode: clientZipCode.value,
+    clientCountry: clientCountry.value,
+    paymentTerms: paymentTerms.value,
+    paymentDueDate: paymentDueDate.value,
+    paymentDueDateUnix: paymentDueDateUnix.value,
+    productDescription: productDescription.value,
+    invoiceItemList: invoiceItemList.value,
+    invoiceTotal: invoiceTotal.value,
+  })
+
+  loading.value = false
+
+  const data = {
+    docId: docId.value,
+    routeId: route.params.invoiceId,
+  }
+
+  await store.dispatch('UPDATE_INVOICE', data)
+}
+
+const uploadInvoice = async () => {
+  if (invoiceItemList.value.length <= 0) {
+    alert("Please ensure you filled out work items!");
+    return;
+  }
+  loading.value = true
+
+  calInvoiceTotal()
+
+  const database = db.collection("invoices").doc()
+
+  await database.set({
+    invoiceId: uid(6),
+    billerStreetAddress: billerStreetAddress.value,
+    billerCity: billerCity.value,
+    billerZipCode: billerZipCode.value,
+    billerCountry: billerCountry.value,
+    clientName: clientName.value,
+    clientEmail: clientEmail.value,
+    clientStreetAddress: clientStreetAddress.value,
+    clientCity: clientCity.value,
+    clientZipCode: clientZipCode.value,
+    clientCountry: clientCountry.value,
+    invoiceDate: invoiceDate.value,
+    invoiceDateUnix: invoiceDateUnix.value,
+    paymentTerms: paymentTerms.value,
+    paymentDueDate: paymentDueDate.value,
+    paymentDueDateUnix: paymentDueDateUnix.value,
+    productDescription: productDescription.value,
+    invoiceItemList: invoiceItemList.value,
+    invoiceTotal: invoiceTotal.value,
+    invoicePending: invoicePending.value,
+    invoiceDraft: invoiceDraft.value,
+    invoicePaid: null,
+  })
+
+  loading.value = false
+
+  closeInvoice()
+
+  await store.dispatch('GET_INVOICES')
+}
+
 const deleteInvoiceItem = (id) => {
- invoiceItemList.value = invoiceItemList.value.filter((item) => item.id !== id)
+  invoiceItemList.value = invoiceItemList.value.filter((item) => item.id !== id)
 }
+
+const calInvoiceTotal = () => {
+  invoiceTotal.value = 0
+  invoiceItemList.value.forEach((item) => {
+    invoiceTotal.value += item.total
+  })
+}
+
 const addNewInvoiceItem = () => {
   invoiceItemList.value.push({
     id: uid(),
@@ -52,10 +187,15 @@ const addNewInvoiceItem = () => {
 }
 const closeInvoice = () => {
   store.commit('TOGGLE_INVOICE')
+  if (editInvoice.value) {
+    store.commit('TOGGLE_EDIT_INVOICE')
+  }
 }
 const saveDraft = () => {
+  invoiceDraft.value = true
 }
 const publishInvoice = () => {
+  invoicePending.value = true
 }
 
 watch(() => paymentTerms.value, () => {
@@ -68,7 +208,7 @@ watch(() => paymentTerms.value, () => {
 <template>
   <div @click="checkClick" ref="invoiceWrap" class="invoice-wrap flex flex-column">
     <form @submit.prevent="submitForm" class="invoice-content">
-      <!--      <Loading v-show="loading" />-->
+      <Loading v-show="loading"/>
       <h1 v-if="!editInvoice">New Invoice</h1>
       <h1 v-else>Edit Invoice</h1>
 

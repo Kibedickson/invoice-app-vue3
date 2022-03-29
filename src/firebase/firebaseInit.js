@@ -1,5 +1,5 @@
-import {initializeApp} from "firebase/app"
-import "firebase/firestore"
+import firebase from "firebase/compat/app"
+import 'firebase/compat/firestore'
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_APIKEY,
@@ -10,6 +10,6 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_APPID
 }
 
-const firebaseApp = initializeApp(firebaseConfig)
+const firebaseApp = firebase.initializeApp(firebaseConfig)
 
-export default firebaseApp.firestore
+export default firebaseApp.firestore()
